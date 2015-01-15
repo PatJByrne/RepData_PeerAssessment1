@@ -1,0 +1,104 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+###Loading the Data:
+First, we want to ensure that we actually have the data loaded up.  This is a simple step, but was surprisingly difficult to get working with knitr.  Echo is set to FALSE, but the grader will have access to the raw Rmd file, and may find it worthwhile to read through.  First I check if I have either the zip or the csv file.  If neither we download the zip.  If only the zip, we unzip, if the csv is available, regardless of the zip, we read the csv.
+```{r load_data,echo= FALSE}
+
+require("RCurl")
+cache_dir <- getwd()
+zip_name <- paste0(cache_dir,'/','repdata-data-activity.zip')
+csv_name <- paste0(cache_dir,'/','activity.csv')
+zip_url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip'
+fex <- file.exists(csv_name,zip_name)
+if(fex[1]){
+  d <- read.csv(csv_name, na.string="NA", sep=",")
+} else if(!any(fex)){
+  #download.file(url = zip.url,destfile = zip.name,method = 'curl')
+  zip_bin <- getBinaryURL(zip_url,ssl.verifypeer = FALSE)
+  zip_file <- file(zip_name,open="wb")
+  writeBin(zip_bin,zip_file)
+  close(zip_file)
+} else{
+  unzip(zipfile = zip_name)
+  d <- read.csv(csv_name, na.string="NA", sep=",")
+}
+
+```
+
+### Extracting the relvant data: step 1 & 2's target dataset
+First step is to clear the NA's out of the dataset.  This will actually remove several days from the analysis, assumedly before the subject had begun wearing the device.  We first sort the data by date and by interval.  All that is asked of us for the interval sorting is the mean.
+```{r NAfull}
+NAfilter = !is.na(d$steps)
+avg_stp_day_omit_NA = aggregate(d$steps[NAfilter], list(date = d$date[NAfilter]), mean)
+md_stp_day_omit_NA  = aggregate(d$steps[NAfilter], list(date = d$date[NAfilter]), median)
+avg_stp_int_omit_NA = aggregate(d$steps[NAfilter], list(interval = d$interval[NAfilter]), mean)
+
+#This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
+day_vec = as.numeric(sapply(
+                      sapply(as.character(avg_stp_day_omit_NA$date),strsplit,'-'),
+                            '[',3))
+
+day_vec = day_vec + (as.numeric(sapply(sapply(as.character(avg_stp_day_omit_NA$date),strsplit,'-'),
+                            '[',2))-10)*32
+
+barplot(avg_stp_day_omit_NA$x,names.arg = day_vec)
+plot(avg_stp_day_omit_NA$x)
+```
+
+###MASSAGE: - step 3
+#num_NA = sum(!NAfilter)
+##Some days have NO steps, they are not represented in avg_stp_day_omit_na
+#FULL_NA_FILTER = !(d$date %in% avg_stp_day_omit_NA$date)
+#d_na_fill = d
+#d_na_fill$steps[FULL_NA_FILTER] = 0
+
+#NAs = is.na(d_na_fill$steps)
+
+#for( st_na in seq_along(d$steps[NAs])){
+  
+#  if(!any(d_na_fill$date[NAs][st_na] == avg_stp_day_omit_NA$date)){
+#    d_na_fill$steps[NAs][st_na] = 0
+#  }
+#  else{
+#    d_na_fill$date[NAs][st_na] = avg_stp_day_omit_NA$x[st_na]
+#  }
+#}
+#avg_stp_day_fill_NA = aggregate(d_na_fill$steps,
+#                                list(date = d_na_fill$date), mean)
+#md_stp_day_fill_NA = aggregate(d_na_fill$steps,
+#                               list(date = d_na_fill$date), median)
+
+
+# BINDING: data and time
+#d$DateTime <- strptime(paste(d$Date, d$Time, sep=" "), format="%d/%m/%Y %H:%M:%S")
+
+# OPEN: png device
+#png("plot4.png", width=480, height=480)
+# PLOT: result
+#par(mfrow=c(2, 2))
+#day_vec <- sapply(sapply(as.character(d$date), strsplit, split = "-"),'[',3)
+#week_vec <- as.numeric(day_vec)%/%7
+#hist(avg_stp_day_omit_na$x, d$Global_active_power, type="l",
+#     xlab="", ylab="Global Active Power")
+#day_vec = as.numeric(sapply(sapply(as.character(ad$date),strsplit,'-'),
+#                            '[',3)) + 
+#          (as.numeric(sapply(sapply(as.character(ad$date),strsplit,'-'),
+#                            '[',2))-10)*32
+#barplot(ad$x,names.arg = day_vec)
+#plot(d$DateTime, d$Voltage, type="l",
+#     xlab="datetime", ylab="Voltage")
+#plot(d$DateTime, d$Sub_metering_1, type="l",
+#     xlab="", ylab="Energy sub metering")
+#lines(d$DateTime, d$Sub_metering_2, col="red")
+#lines(d$DateTime, d$Sub_metering_3, col="blue")
+#legend("topright", bty="n", lty=1, col=c("black", "red", "blue"),
+#       legend=c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
+#plot(d$DateTime, d$Global_reactive_power, type="l",
+#     xlab="datetime", ylab="Global_reactive_Power")
+# TURN OFF: graphic device
+#dev.off()
