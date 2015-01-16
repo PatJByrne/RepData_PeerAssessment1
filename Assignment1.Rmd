@@ -6,9 +6,10 @@ output:
 ---
 
 ###Loading the Data:
-First, we want to ensure that we actually have the data loaded up.  This is a simple step, but was surprisingly difficult to get working with knitr.  Echo is set to FALSE, but the grader will have access to the raw Rmd file, and may find it worthwhile to read through.  First I check if I have either the zip or the csv file.  If neither we download the zip.  If only the zip, we unzip, if the csv is available, regardless of the zip, we read the csv.
-```{r load_data,echo= FALSE}
-
+First, we want to ensure that we actually have the data loaded up. First I check if I have either the zip or the csv file.  If neither we download the zip.  If only the zip, we unzip, if the csv is available, regardless of the zip, we read the csv.
+```{r load_data}
+#require('ggplot2')
+library(ggplot2)
 require("RCurl")
 cache_dir <- getwd()
 zip_name <- paste0(cache_dir,'/','repdata-data-activity.zip')
@@ -45,12 +46,12 @@ avg_stp_int_omit_NA = aggregate(d$steps[NAfilter], list(interval = d$interval[NA
 
 
 The mean number of steps per day, and the median number of steps per day for the entire dataset, NA's exluded, are:
-```{r mean_median, echo=FALSE}
+```{r mean_median}
 print(avg_tot_stp_day_omit_NA)
 print(md_tot_stp_day_omit_NA)
 ```
 respectively, and the most active 5 minute interval is:
-```{r max int, echo = FALSE}
+```{r max int}
 avg_stp_int_omit_NA$interval[avg_stp_int_omit_NA$x == max(avg_stp_int_omit_NA$x)]/5
 ```
 
@@ -81,11 +82,11 @@ d_na_fill$steps[FULL_NA_FILTER] = 0
 ```
 
 The total number of NA's (before filling in the blank days) is:
-```{r, echo = FALSE}
+```{r}
 print(num_NA)
 ```
 
-I now replace the NAs with the average value/interval.  I prefer for loops for complicated work, as I learned to code on a more general language, and 'apply' won't help me in C, Python, or Java.  Nothing stupider than reinventing the wheel. ('apply' functions aren't faster than for loops, that's a myth based on S)
+I now replace the NAs with the average value/interval.  I prefer for loops for complicated work, as I learned to code on a more general language, and practicing 'apply' won't help in C, Python, or Java.  Nothing stupider than reinventing the wheel. ('apply' functions aren't faster than for loops, that's a myth based on S)
 
 ```{r}
 NAs = is.na(d_na_fill$steps)
@@ -95,7 +96,7 @@ for( st_na in seq_along(d$steps[NAs])){
 }
 ```
 
-```{r echo = FALSE}
+```{r}
 tot_stp_day = aggregate(d_na_fill$steps, list(date = d_na_fill$date), sum)
 avg_tot_stp_day = mean(tot_stp_day$x)
 md_tot_stp_day  = median(tot_stp_day$x)
@@ -106,20 +107,20 @@ avg_stp_int = aggregate(d_na_fill$steps, list(interval = d_na_fill$interval), me
 ```
 
 The mean number of steps per day, and the median number of steps per day for the entire dataset, NA's filled in, are:
-```{r mean_median2, echo=FALSE}
+```{r mean_median2}
 print(avg_tot_stp_day)
 print(md_tot_stp_day)
 ```
 respectively, and the most active 5 minute interval is:
-```{r max int2, echo = FALSE}
+```{r max int2}
 avg_stp_int$interval[avg_stp_int$x == max(avg_stp_int$x)]/5
 ```
 as expected, the average was changed, as we are averaging over a few days that contribute zero to the sum.  The median was not significantly changed, as would be expected, since the presence of a few new zero days would be offset by higher numbers across the board on the rest of the days.  And the most active interval is still, obviously, the same
 
 ###Plotting the Data, again:
-And I then repeat the averaging and plotting above, but with my new, NA-filled dataset (details omitted)
+And I then repeat the averaging and plotting above, but with my new, NA-filled dataset 
 
-```{r plots2,echo=FALSE}
+```{r plots2}
 #This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
 day_vec = as.numeric(sapply(
                       sapply(as.character(tot_stp_day$date),strsplit,'-'),
@@ -132,20 +133,25 @@ plot(avg_stp_int$interval,avg_stp_int_omit_NA$x,xlab = 'Interval',ylab = 'Steps'
 ```
 
 ###Analysis: Differences between weekdays and weekends
-Finally we look at our new dataset to see if there is any correlation between activity and day of the week.
+Finally we look at our new dataset to see if there is any correlation between activity and day of the week.  We're supposed to do a panel plot, but I've chosen to also represent the data overlaid, as that's how you would actually note any differences.
 
 ```{r}
 days <- weekdays(as.Date(d_na_fill$date))
 weekend_filter = ((days=='Saturday') | (days=='Sunday'))
 days[weekend_filter] = 'Weekend'
 days[!weekend_filter] = 'Weekday'
-d_na_fill$weekday = days
-avg_wknd_stp_int = aggregate(d_na_fill$steps[weekend_filter], list(interval = d_na_fill$interval[weekend_filter]), mean)
-avg_wkd_stp_int = aggregate(d_na_fill$steps[!weekend_filter], list(interval = d_na_fill$interval[!weekend_filter]), mean)
-plot(avg_wkd_stp_int$interval,avg_wkd_stp_int$x,col  ='blue',xlab = 'Interval',ylab = 'Steps')
-points(avg_wknd_stp_int$interval,avg_wknd_stp_int$x,col  ='red')
+d_na_fill$weekday = factor(days)
+avg_stp_wk_int = aggregate(d_na_fill$steps, by = list(d_na_fill$interval,d_na_fill$weekday), mean)
+colnames(avg_stp_wk_int) = c('interval','weekday','steps')
+plot(avg_stp_wk_int$interval[avg_stp_wk_int$weekday == 'Weekday'],
+     avg_stp_wk_int$steps[avg_stp_wk_int$weekday == 'Weekday'],col  ='blue',xlab = 'Interval',ylab = 'Steps')
+points(avg_stp_wk_int$interval[avg_stp_wk_int$weekday == 'Weekend'],
+     avg_stp_wk_int$steps[avg_stp_wk_int$weekday == 'Weekend'],col  ='red')
 legend("topright", bty="n", pch = 1,col=c( "blue",'red'),
        legend=c("Weekdays", "Weekend"))
+
+sp <- ggplot(avg_stp_wk_int, aes(x=interval, y=steps)) + geom_point(shape=1)
+sp + facet_grid(. ~ weekday)
 ```
 
 As we would expect, the person wearing the monitor is inactive until later in the morning on the weekends, but is active until later at night. (S)He is much busier, much earlier on the weekdays, but seems to have a higher sustained activity level on the weekdays.
