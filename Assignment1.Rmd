@@ -65,7 +65,7 @@ day_vec = day_vec + (as.numeric(sapply(sapply(as.character(tot_stp_day_omit_NA$d
                             '[',2))-10)*32
 barplot(tot_stp_day_omit_NA$x,names.arg = day_vec,ylab = 'Average Steps',xlab = 'Day')
 
-plot(avg_stp_int_omit_NA$x,avg_stp_int_omit_NA$steps)
+plot(avg_stp_int_omit_NA$interval,avg_stp_int_omit_NA$x,xlab = 'Interval',ylab = 'Steps')
 ```
 
 ###Massaging the data: filling in NA's
@@ -95,8 +95,6 @@ for( st_na in seq_along(d$steps[NAs])){
 }
 ```
 
-And I then repeat the averaging and plotting above, but with my new, NA-filled dataset:
-
 ```{r echo = FALSE}
 tot_stp_day = aggregate(d_na_fill$steps, list(date = d_na_fill$date), sum)
 avg_tot_stp_day = mean(tot_stp_day$x)
@@ -118,7 +116,9 @@ avg_stp_int$interval[avg_stp_int$x == max(avg_stp_int$x)]/5
 ```
 as expected, the average was changed, as we are averaging over a few days that contribute zero to the sum.  The median was not significantly changed, as would be expected, since the presence of a few new zero days would be offset by higher numbers across the board on the rest of the days.  And the most active interval is still, obviously, the same
 
-###Plotting the Data
+###Plotting the Data, again:
+And I then repeat the averaging and plotting above, but with my new, NA-filled dataset (details omitted)
+
 ```{r plots2,echo=FALSE}
 #This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
 day_vec = as.numeric(sapply(
@@ -128,35 +128,24 @@ day_vec = as.numeric(sapply(
 day_vec = day_vec + (as.numeric(sapply(sapply(as.character(tot_stp_day$date),strsplit,'-'),
                             '[',2))-10)*32
 barplot(tot_stp_day$x,names.arg = day_vec,ylab = 'Average Steps',xlab = 'Day')
-
-plot(avg_stp_int$x,avg_stp_int$steps)
+plot(avg_stp_int$interval,avg_stp_int_omit_NA$x,xlab = 'Interval',ylab = 'Steps')
 ```
 
-# BINDING: data and time
-#d$DateTime <- strptime(paste(d$Date, d$Time, sep=" "), format="%d/%m/%Y %H:%M:%S")
+###Analysis: Differences between weekdays and weekends
+Finally we look at our new dataset to see if there is any correlation between activity and day of the week.
 
-# OPEN: png device
-#png("plot4.png", width=480, height=480)
-# PLOT: result
-#par(mfrow=c(2, 2))
-#day_vec <- sapply(sapply(as.character(d$date), strsplit, split = "-"),'[',3)
-#week_vec <- as.numeric(day_vec)%/%7
-#hist(avg_stp_day_omit_na$x, d$Global_active_power, type="l",
-#     xlab="", ylab="Global Active Power")
-#day_vec = as.numeric(sapply(sapply(as.character(ad$date),strsplit,'-'),
-#                            '[',3)) + 
-#          (as.numeric(sapply(sapply(as.character(ad$date),strsplit,'-'),
-#                            '[',2))-10)*32
-#barplot(ad$x,names.arg = day_vec)
-#plot(d$DateTime, d$Voltage, type="l",
-#     xlab="datetime", ylab="Voltage")
-#plot(d$DateTime, d$Sub_metering_1, type="l",
-#     xlab="", ylab="Energy sub metering")
-#lines(d$DateTime, d$Sub_metering_2, col="red")
-#lines(d$DateTime, d$Sub_metering_3, col="blue")
-#legend("topright", bty="n", lty=1, col=c("black", "red", "blue"),
-#       legend=c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
-#plot(d$DateTime, d$Global_reactive_power, type="l",
-#     xlab="datetime", ylab="Global_reactive_Power")
-# TURN OFF: graphic device
-#dev.off()
+```{r}
+days <- weekdays(as.Date(d_na_fill$date))
+weekend_filter = ((days=='Saturday') | (days=='Sunday'))
+days[weekend_filter] = 'Weekend'
+days[!weekend_filter] = 'Weekday'
+d_na_fill$weekday = days
+avg_wknd_stp_int = aggregate(d_na_fill$steps[weekend_filter], list(interval = d_na_fill$interval[weekend_filter]), mean)
+avg_wkd_stp_int = aggregate(d_na_fill$steps[!weekend_filter], list(interval = d_na_fill$interval[!weekend_filter]), mean)
+plot(avg_wkd_stp_int$interval,avg_wkd_stp_int$x,col  ='blue',xlab = 'Interval',ylab = 'Steps')
+points(avg_wknd_stp_int$interval,avg_wknd_stp_int$x,col  ='red')
+legend("topright", bty="n", pch = 1,col=c( "blue",'red'),
+       legend=c("Weekdays", "Weekend"))
+```
+
+As we would expect, the person wearing the monitor is inactive until later in the morning on the weekends, but is active until later at night. (S)He is much busier, much earlier on the weekdays, but seems to have a higher sustained activity level on the weekdays.
