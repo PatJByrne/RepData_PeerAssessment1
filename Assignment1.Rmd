@@ -34,45 +34,103 @@ if(fex[1]){
 First step is to clear the NA's out of the dataset.  This will actually remove several days from the analysis, assumedly before the subject had begun wearing the device.  We first sort the data by date and by interval.  All that is asked of us for the interval sorting is the mean.
 ```{r NAfull}
 NAfilter = !is.na(d$steps)
-avg_stp_day_omit_NA = aggregate(d$steps[NAfilter], list(date = d$date[NAfilter]), mean)
-md_stp_day_omit_NA  = aggregate(d$steps[NAfilter], list(date = d$date[NAfilter]), median)
+tot_stp_day_omit_NA = aggregate(d$steps[NAfilter], list(date = d$date[NAfilter]), sum)
+avg_tot_stp_day_omit_NA = mean(tot_stp_day_omit_NA$x)
+md_tot_stp_day_omit_NA  = median(tot_stp_day_omit_NA$x)
+
 avg_stp_int_omit_NA = aggregate(d$steps[NAfilter], list(interval = d$interval[NAfilter]), mean)
 
-#This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
-day_vec = as.numeric(sapply(
-                      sapply(as.character(avg_stp_day_omit_NA$date),strsplit,'-'),
-                            '[',3))
 
-day_vec = day_vec + (as.numeric(sapply(sapply(as.character(avg_stp_day_omit_NA$date),strsplit,'-'),
-                            '[',2))-10)*32
-
-barplot(avg_stp_day_omit_NA$x,names.arg = day_vec)
-plot(avg_stp_day_omit_NA$x)
 ```
 
-###MASSAGE: - step 3
-#num_NA = sum(!NAfilter)
-##Some days have NO steps, they are not represented in avg_stp_day_omit_na
-#FULL_NA_FILTER = !(d$date %in% avg_stp_day_omit_NA$date)
-#d_na_fill = d
-#d_na_fill$steps[FULL_NA_FILTER] = 0
 
-#NAs = is.na(d_na_fill$steps)
+The mean number of steps per day, and the median number of steps per day for the entire dataset, NA's exluded, are:
+```{r mean_median, echo=FALSE}
+print(avg_tot_stp_day_omit_NA)
+print(md_tot_stp_day_omit_NA)
+```
+respectively, and the most active 5 minute interval is:
+```{r max int, echo = FALSE}
+avg_stp_int_omit_NA$interval[avg_stp_int_omit_NA$x == max(avg_stp_int_omit_NA$x)]/5
+```
 
-#for( st_na in seq_along(d$steps[NAs])){
-  
-#  if(!any(d_na_fill$date[NAs][st_na] == avg_stp_day_omit_NA$date)){
-#    d_na_fill$steps[NAs][st_na] = 0
-#  }
-#  else{
-#    d_na_fill$date[NAs][st_na] = avg_stp_day_omit_NA$x[st_na]
-#  }
-#}
-#avg_stp_day_fill_NA = aggregate(d_na_fill$steps,
-#                                list(date = d_na_fill$date), mean)
-#md_stp_day_fill_NA = aggregate(d_na_fill$steps,
-#                               list(date = d_na_fill$date), median)
+###Plotting the Data
+```{r plots}
+#This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
+day_vec = as.numeric(sapply(
+                      sapply(as.character(tot_stp_day_omit_NA$date),strsplit,'-'),
+                            '[',3))
 
+day_vec = day_vec + (as.numeric(sapply(sapply(as.character(tot_stp_day_omit_NA$date),strsplit,'-'),
+                            '[',2))-10)*32
+barplot(tot_stp_day_omit_NA$x,names.arg = day_vec,ylab = 'Average Steps',xlab = 'Day')
+
+plot(avg_stp_int_omit_NA$x,avg_stp_int_omit_NA$steps)
+```
+
+###Massaging the data: filling in NA's
+Many entries have 'NA' as a value.  In fact, some days have NO steps entered, and they are not represented in the previous data (for instance, the barplot begins on day 2!).  We will use the average value of the recorded steps for that interval as the relacement value.  This will have the effect of not changing the average value for any interval measured.  It *WILL* change the total steps taken on that day, the average and median steps/day.  However, the other options, mean/median per day would all have the same (or similar) effects.  The current assumption, however, that there were NO steps taken during the NA intervals is almost definitely wrong, and represents a minimum estimate.  A slightly larger one will likely be more representative of reality.
+
+I will first copy off our dataset, any days with NO non-NA values will be replaced with zero, as averaging a zero length array will probably give problems.
+
+```{r}
+num_NA = sum(!NAfilter)
+FULL_NA_FILTER = !(d$date %in% tot_stp_day_omit_NA$date)
+d_na_fill = d
+d_na_fill$steps[FULL_NA_FILTER] = 0
+```
+
+The total number of NA's (before filling in the blank days) is:
+```{r, echo = FALSE}
+print(num_NA)
+```
+
+I now replace the NAs with the average value/interval.  I prefer for loops for complicated work, as I learned to code on a more general language, and 'apply' won't help me in C, Python, or Java.  Nothing stupider than reinventing the wheel. ('apply' functions aren't faster than for loops, that's a myth based on S)
+
+```{r}
+NAs = is.na(d_na_fill$steps)
+for( st_na in seq_along(d$steps[NAs])){
+  interv = d_na_fill$interval[NAs][st_na]
+  d_na_fill$steps[NAs][st_na] = avg_stp_int_omit_NA$x[avg_stp_int_omit_NA$interval == interv]
+}
+```
+
+And I then repeat the averaging and plotting above, but with my new, NA-filled dataset:
+
+```{r echo = FALSE}
+tot_stp_day = aggregate(d_na_fill$steps, list(date = d_na_fill$date), sum)
+avg_tot_stp_day = mean(tot_stp_day$x)
+md_tot_stp_day  = median(tot_stp_day$x)
+
+avg_stp_int = aggregate(d_na_fill$steps, list(interval = d_na_fill$interval), mean)
+
+
+```
+
+The mean number of steps per day, and the median number of steps per day for the entire dataset, NA's filled in, are:
+```{r mean_median2, echo=FALSE}
+print(avg_tot_stp_day)
+print(md_tot_stp_day)
+```
+respectively, and the most active 5 minute interval is:
+```{r max int2, echo = FALSE}
+avg_stp_int$interval[avg_stp_int$x == max(avg_stp_int$x)]/5
+```
+as expected, the average was changed, as we are averaging over a few days that contribute zero to the sum.  The median was not significantly changed, as would be expected, since the presence of a few new zero days would be offset by higher numbers across the board on the rest of the days.  And the most active interval is still, obviously, the same
+
+###Plotting the Data
+```{r plots2,echo=FALSE}
+#This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
+day_vec = as.numeric(sapply(
+                      sapply(as.character(tot_stp_day$date),strsplit,'-'),
+                            '[',3))
+
+day_vec = day_vec + (as.numeric(sapply(sapply(as.character(tot_stp_day$date),strsplit,'-'),
+                            '[',2))-10)*32
+barplot(tot_stp_day$x,names.arg = day_vec,ylab = 'Average Steps',xlab = 'Day')
+
+plot(avg_stp_int$x,avg_stp_int$steps)
+```
 
 # BINDING: data and time
 #d$DateTime <- strptime(paste(d$Date, d$Time, sep=" "), format="%d/%m/%Y %H:%M:%S")
