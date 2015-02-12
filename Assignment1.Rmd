@@ -8,28 +8,33 @@ output:
 ###Loading the Data:
 First, we want to ensure that we actually have the data loaded up. First I check if I have either the zip or the csv file.  If neither we download the zip.  If only the zip, we unzip, if the csv is available, regardless of the zip, we read the csv.
 ```{r load_data}
-require('ggplot2')
-require("RCurl")
+
+if (!require('ggplot2') | !require("RCurl")){
+  print('packages ggplot2 and RCurl are required to run this code,
+        Please install them on your computer and re-run the code')
+  return
+}
 cache_dir <- getwd()
 zip_name <- paste0(cache_dir,'/','repdata-data-activity.zip')
 csv_name <- paste0(cache_dir,'/','activity.csv')
 fex <- file.exists(csv_name,zip_name)
-if(fex[1]){
-  d <- read.csv(csv_name, na.string="NA", sep=",")
-} else if(!any(fex)){
+
+if(!any(fex)){
   zip_url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip'
   zip_bin <- getBinaryURL(zip_url,ssl.verifypeer = FALSE)
   zip_file <- file(zip_name,open="wb")
   writeBin(zip_bin,zip_file)
   close(zip_file)
-} else{
-  unzip(zipfile = zip_name)
-  d <- read.csv(csv_name, na.string="NA", sep=",")
+  fex <- file.exists(csv_name,zip_name)
 }
+if (!fex[1]){
+  unzip(zipfile = zip_name)
+}
+d <- read.csv(csv_name, na.string="NA", sep=",")
 
 ```
 
-### Extracting the relvant data: step 1 & 2's target dataset
+### Extracting the reelvant data: step 1 & 2's target dataset
 First step is to clear the NA's out of the dataset.  This will actually remove several days from the analysis, assumedly before the subject had begun wearing the device.  We first sort the data by date and by interval.  All that is asked of us for the interval sorting is the mean.
 ```{r NAfull}
 NAfilter = !is.na(d$steps)
