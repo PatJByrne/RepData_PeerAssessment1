@@ -1,9 +1,4 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
 
 
 ## Loading and preprocessing the data
@@ -61,6 +56,8 @@ if (!require('ggplot2') | !require("RCurl") | !require("dplyr")){
 ## 
 ##     intersect, setdiff, setequal, union
 ```
+
+Then I check if you have the csv.  If not, I check if you have the zip.  If not, I download the zip.  Once I am sure you have the zip, I unzip it.  Once I am sure you have the .csv, I read it.
 
 
 ```r
@@ -121,38 +118,38 @@ respectively, and the most active 5 minute interval is:
 
 ```r
 max_int = (avg_stp_NA_strip$x == max(avg_stp_NA_strip$x))
-print(paste('Interval ',avg_stp_NA_strip$interval[max_int]/5,
-            ': minutes ',avg_stp_NA_strip$interval[max_int],
-            ' through ',avg_stp_NA_strip$interval[max_int]+5, sep = ' '))
+max_int_hour = avg_stp_NA_strip$interval[max_int]%/%100
+max_int_minute = avg_stp_NA_strip$interval[max_int]%%100
+print(paste('Interval ',avg_stp_NA_strip$interval[max_int]/5,': ',
+            'from ',max_int_hour,':',max_int_minute,' through ',
+            max_int_hour,':',max_int_minute+5))
 ```
 
 ```
-## [1] "Interval  167 : minutes  835  through  840"
+## [1] "Interval  167 :  from  8 : 35  through  8 : 40"
 ```
 
 
 ## What is the average daily activity pattern?
 
 ```r
-#This is a rather backasswards way of listing the days on the barplot x-axis.  As always fault lays with R for it's failings.
-
 hist(tot_stp_NA_strip$x,xlab = "Daily Activity (steps)",ylab = "Frequency",
      main = "Histogram of Steps",breaks = 10)
 ```
 
-![plot of chunk plots](figure/plots-1.png) 
+![](PA1_template_files/figure-html/plots-1.png) 
 
 ```r
 plot(avg_stp_NA_strip$interval,avg_stp_NA_strip$x,xlab = 'Interval',ylab = 'Steps')
 ```
 
-![plot of chunk plots](figure/plots-2.png) 
+![](PA1_template_files/figure-html/plots-2.png) 
 
 
 ## Imputing missing values
 Many entries have 'NA' as a value.  In fact, some days have NO steps entered, and they are not represented in the previous data (for instance, the NA-filtered dataset begins on day 2!).  We will use the average value of the recorded steps for that interval as the relacement value.  This will have the effect of not changing the average value for any interval measured.  It *WILL* change the total steps taken on that day, the average and median steps/day.  However, the other options, mean/median per day would all have the same (or similar) effects.  The current assumption, however, that there were NO steps taken during the NA intervals is almost definitely wrong, and represents a minimum estimate.  A slightly larger one will likely be more representative of reality.
 
-Any days with NO non-NA values will be replaced with zero, as averaging a zero length array will probably give problems.
+Any days with  ONLY NA values will be replaced with zero first, as averaging a zero length array will probably give problems.
 
 
 ```r
@@ -171,7 +168,7 @@ print(num_NA)
 ## [1] 2304
 ```
 
-I now replace the NAs with the average value/interval.  I prefer for loops for complicated work, as I learned to code on a more general language, and practicing 'apply' won't help in C, Python, or Java.  Nothing stupider than reinventing the wheel. ('apply' functions aren't faster than for loops, that's a myth based on S)
+I now replace the NAs with the average value/interval.  I prefer for loops for complicated work, as I learned to code on a more general language, and practicing 'apply' won't help in C, Python, or Java.
 
 
 ```r
@@ -222,7 +219,7 @@ print(paste('Interval ',avg_stp_int$interval[max_int]/5,
 ```
 as expected, the average was changed, as we are averaging over a few days that contribute zero to the sum.  The median was not significantly changed, as would be expected, since the presence of a few new zero days would be offset by higher numbers across the board on the rest of the days.  And the most active interval is still, obviously, the same
 ## Are there differences in activity patterns between weekdays and weekends?
-And I then repeat the averaging and plotting above, but with my new, NA-filled dataset 
+And I then repeat the averaging and plotting above, but with my new, NA-filled dataset As you can see, the 0 step bin has filled in significantly higher, while the rest of the histogram is roughly unchanged
 
 
 ```r
@@ -231,13 +228,13 @@ hist(tot_stp_day$x,xlab = "Daily Activity (steps)",ylab = "Frequency",
      main = "Histogram of Steps",breaks = 10)
 ```
 
-![plot of chunk plots2](figure/plots2-1.png) 
+![](PA1_template_files/figure-html/plots2-1.png) 
 
 ```r
 plot(avg_stp_int$interval,avg_stp_int$x,xlab = 'Interval',ylab = 'Steps')
 ```
 
-![plot of chunk plots2](figure/plots2-2.png) 
+![](PA1_template_files/figure-html/plots2-2.png) 
 
 
 ###Analysis: Differences between weekdays and weekends
@@ -262,13 +259,13 @@ legend("topright", bty="n", pch = 1,col=c( "blue",'red'),
        legend=c("Weekdays", "Weekend"))
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
 
 ```r
 sp <- ggplot(avg_stp_wk_int, aes(x=interval, y=steps)) + geom_point(shape=1)
 sp + facet_grid(. ~ weekday)
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-2.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-5-2.png) 
 
 As we would expect, the person wearing the monitor is inactive until later in the morning on the weekends, but is active until later at night. (S)He is much busier, much earlier on the weekdays, but seems to have a higher sustained activity level on the weekends.
